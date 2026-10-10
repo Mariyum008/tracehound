@@ -1,0 +1,10 @@
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+# Never commit real captures - they contain IPs, DNS history and possibly credentials
+captures/
+*.pcap
+*.pcapng
+.env
+.streamlit/secrets.toml
