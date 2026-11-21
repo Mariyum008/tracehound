@@ -1,2 +1,1 @@
-# Streamlit Community Cloud installs the app from here
-.
+-e .
