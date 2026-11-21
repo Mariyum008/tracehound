@@ -115,7 +115,9 @@ def _process(cap: ParsedCapture, frame: int, pkt) -> None:
         proto, sport, dport = "UDP", pkt[UDP].sport, pkt[UDP].dport
     if Raw in pkt:
         payload = bytes(pkt[Raw].load)
-    cap.packets.append((frame, ts, src, dst, proto, sport, dport, flags, len(pkt), len(payload)))
+    # Count transport payload even when scapy decoded it (e.g. SMB on 445), not only Raw bytes
+    plen = len(bytes(pkt[proto].payload)) if proto in ("TCP", "UDP") else len(payload)
+    cap.packets.append((frame, ts, src, dst, proto, sport, dport, flags, len(pkt), max(plen, len(payload))))
 
     # DNS queries and responses
     if pkt.haslayer(DNS) and pkt.haslayer(DNSQR):

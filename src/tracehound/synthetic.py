@@ -127,6 +127,34 @@ def write_clean_scenario(path: str) -> str:
     return b.write(path)
 
 
+ATTACKER_IP, SERVER, TUNNEL_DOMAIN = "198.51.100.99", "192.168.1.50", "cdn-sync-api.net"
+
+
+def write_intrusion_scenario(path: str) -> str:
+    """SSH brute force on a server, DNS tunnel out of it, then remote-admin hops to other machines."""
+    b = Builder(seed=23)
+    _normal_browsing(b, 0, CLEAN_HOST)
+    _normal_browsing(b, 5, SERVER)
+
+    # 1. SSH password guessing from the internet: 40 attempts, one every ~2s
+    for i in range(40):
+        sp = b.handshake(100 + i * 2 + b.rng.random() * 0.3, ATTACKER_IP, SERVER, 22)
+        b.add(100 + i * 2 + 0.5, IP(src=ATTACKER_IP, dst=SERVER) / TCP(sport=sp, dport=22, flags="PA") / Raw(bytes(200)))
+
+    # 2. DNS tunnel: hex-encoded data in long subdomains of one domain
+    for i in range(45):
+        chunk = "".join(b.rng.choice("0123456789abcdef") for _ in range(48))
+        b.dns(300 + i * 0.4, SERVER, f"{chunk}.{i:04x}.{TUNNEL_DOMAIN}", nx=True)
+
+    # 3. Lateral movement: working SMB, RDP and WinRM sessions to four internal hosts
+    for i, (last, port) in enumerate([(21, 445), (22, 3389), (23, 5985), (24, 445)]):
+        target = f"192.168.1.{last}"
+        sp = b.handshake(500 + i * 20, SERVER, target, port)
+        b.add(500 + i * 20 + 0.1, IP(src=SERVER, dst=target) / TCP(sport=sp, dport=port, flags="PA") / Raw(bytes(600)))
+        b.add(500 + i * 20 + 0.2, IP(src=target, dst=SERVER) / TCP(sport=port, dport=sp, flags="PA") / Raw(bytes(400)))
+    return b.write(path)
+
+
 # ---- Zeek-format version of the breach scenario ------------------------------------------
 
 ZEEK_FIELDS = {
