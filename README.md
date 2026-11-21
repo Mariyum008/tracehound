@@ -51,6 +51,29 @@ Tracehound sits in between, with three design principles:
       +--> tracehound-mcp        MCP server: Claude Desktop investigates interactively
 ```
 
+## Results
+
+**10 attack types detected**, each mapped to a MITRE ATT&CK technique. Measured on Tracehound's built-in synthetic captures (attacks hidden in normal browsing, plus a clean baseline), not on real-world breach captures:
+
+| Attack type | MITRE ATT&CK | Detected |
+|---|---|---|
+| Suspicious download | T1105 | Yes |
+| Cleartext credentials | T1552 | Yes |
+| Suspicious (DGA) domains | T1568.002 | Yes |
+| NXDOMAIN burst | T1568.002 | Yes |
+| Beaconing | T1071 | Yes |
+| Port scan | T1046 | Yes |
+| Data exfiltration | T1041 | Yes |
+| Brute force | T1110 | Yes |
+| DNS tunneling | T1071.004 | Yes |
+| Lateral movement | T1021 | Yes |
+
+- **Recall: 10 of 10** attack types found (0 missed).
+- **False alarms on clean traffic: 0.**
+- **Precision: 10 of 12 findings (83%).** The 2 extras were the DNS tunnel also tripping the NXDOMAIN and random-domain rules, which is the same behavior seen through two rules.
+- **Compromised host:** named correctly as the first host in both attack scenarios.
+- Reproduce: `pytest` (61 tests) or `tracehound eval evaluation --demo`.
+
 ## Detection rules
 
 | Rule | What it catches | MITRE ATT&CK |
