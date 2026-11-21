@@ -143,9 +143,9 @@ def test_dashboard_renders_without_errors(demo, tmp_path, monkeypatch):
     at.session_state["pcap"] = demo[0]
     at.run()
     assert not at.exception
-    assert [t.label for t in at.tabs] == ["Timeline", "Findings", "Traffic", "Network map", "Ask Claude", "Report"]
-    assert len(at.get("plotly_chart")) == 5
-    assert any("Wireshark" in b.label for b in at.button)
+    assert [t.label for t in at.tabs] == ["Timeline", "Replay", "Findings", "Detections", "Traffic", "Network map", "Ask Claude", "Report"]
+    assert len(at.get("plotly_chart")) == 6  # timeline, replay, traffic x3, network map
+    assert len(at.code) > 0  # no Wireshark here, so evidence shows copyable display filters instead of buttons
 
 
 # --- live monitoring ------------------------------------------------------------------

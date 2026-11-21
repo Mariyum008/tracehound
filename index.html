@@ -83,7 +83,8 @@
 <header class="hero" id="top"><div class="wrap">
   <h1>Find the breach in the packets.</h1>
   <p class="lead">Give Tracehound a <code>.pcap</code> from a suspected incident. It finds the attack, builds the timeline, and proves every claim with packet evidence you can check in Wireshark.</p>
-  <a class="btn primary" href="#start">Get started</a>
+  <a class="btn primary" href="https://mariyum008-tracehound-srctracehounddashboard-wzwkzv.streamlit.app">Try the live dashboard</a>
+  <a class="btn" href="#start">Get started</a>
   <a class="btn" href="https://github.com/Mariyum008/tracehound">View on GitHub</a>
 
   <div class="term">
@@ -105,7 +106,7 @@ Likely first compromised host: 192.168.1.20
 
   <div class="stats">
     <div class="stat"><b>10</b><span>detection rules</span></div>
-    <div class="stat"><b>50</b><span>tests passing</span></div>
+    <div class="stat"><b>61</b><span>tests passing</span></div>
     <div class="stat"><b>MITRE</b><span>ATT&amp;CK mapped</span></div>
     <div class="stat"><b>2</b><span>input formats: pcap, Zeek</span></div>
   </div>
@@ -159,8 +160,11 @@ Likely first compromised host: 192.168.1.20
     <h2>Tested</h2>
     <p class="sub">Every rule is tested against synthetic breaches hidden in normal browsing, and against clean traffic that must produce zero findings.</p>
     <div class="shots">
+      <div class="shot"><img src="docs/images/dashboard-replay.png" alt="Attack Replay tab"><p>Attack Replay: press play and watch the risk score climb and the kill chain light up as the attack unfolds.</p></div>
+      <div class="shot"><img src="docs/images/dashboard-breach.png" alt="Dashboard on the sample breach"><p>The dashboard: risk score, kill chain, timeline and one-click sample attacks.</p></div>
+      <div class="shot"><img src="docs/images/dashboard-detections.png" alt="Detections tab"><p>Detections: which of the 10 rules fired.</p></div>
       <div class="shot"><img src="docs/images/new-rules-detection.png" alt="Tracehound report on the intrusion scenario"><p>The intrusion scenario: SSH brute force, DNS tunnel and lateral movement detected, with the compromised server named as the first host.</p></div>
-      <div class="shot"><img src="docs/images/test-results.png" alt="pytest output: 50 passed"><p>The full test suite: 50 passed.</p></div>
+      <div class="shot"><img src="docs/images/test-results.png" alt="pytest output: 61 passed"><p>The full test suite: 61 passed.</p></div>
     </div>
   </section>
 

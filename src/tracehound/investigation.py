@@ -8,7 +8,7 @@ from .detectors import Finding, Thresholds, run_all, SEVERITY_ORDER
 from .store import CaptureStore, is_internal
 
 STAGE_ORDER = ["Discovery", "Initial Access / Execution", "Credential Access", "Command and Control",
-               "Discovery / Lateral Movement", "Exfiltration"]
+               "Command and Control / Exfiltration", "Discovery / Lateral Movement", "Lateral Movement", "Exfiltration"]
 
 
 def fmt_time(ts: float | None) -> str:

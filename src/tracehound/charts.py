@@ -9,19 +9,21 @@ import plotly.graph_objects as go
 from .investigation import Investigation, STAGE_ORDER
 from .store import is_internal
 
-SERIES_BLUE = "#2a78d6"
-MUTED = "#8a8984"
+SERIES_BLUE = "#58a6ff"
+MUTED = "#8b949e"
+BG = "#0d1117"  # page background, used for marker outlines
 # Severity is a status, so it uses the reserved status palette and always ships with a text label
-SEVERITY_COLOR = {"critical": "#d03b3b", "high": "#ec835a", "medium": "#fab219", "low": MUTED}
+SEVERITY_COLOR = {"critical": "#ff6b6b", "high": "#ffa657", "medium": "#e3b341", "low": MUTED}
 SEVERITY_ICON = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}
-BASE_LAYOUT = dict(margin=dict(l=10, r=10, t=40, b=10), hoverlabel=dict(font_size=13), font=dict(size=13))
+BASE_LAYOUT = dict(margin=dict(l=10, r=10, t=40, b=10), hoverlabel=dict(font_size=13), font=dict(size=13, color="#c9d1d9"),
+                   template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
 
 
 def _style(fig: go.Figure, title: str, height: int = 360) -> go.Figure:
     # Shared layout: recessive grid, title names the single series so no legend is needed
     fig.update_layout(title=dict(text=title, x=0, font=dict(size=15)), height=height, **BASE_LAYOUT)
     fig.update_xaxes(showgrid=False, zeroline=False)
-    fig.update_yaxes(gridcolor="rgba(128,128,128,0.18)", zeroline=False)
+    fig.update_yaxes(gridcolor="rgba(139,148,158,0.15)", zeroline=False)
     return fig
 
 
@@ -42,9 +44,9 @@ def timeline_figure(inv: Investigation) -> go.Figure:
             continue
         fig.add_trace(go.Scatter(
             x=[e["time_utc"].replace(" UTC", "") for e in rows], y=[e["stage"] for e in rows],
-            mode="markers+text", name=SEVERITY_ICON[sev], text=[e["finding"] for e in rows],
+            mode="markers+text", name=SEVERITY_ICON[sev], text=[e["finding"] for e in rows], cliponaxis=False,
             textposition=[pos_for[e["finding"]] for e in rows],
-            marker=dict(size=16, color=SEVERITY_COLOR[sev], line=dict(width=2, color="white"),
+            marker=dict(size=16, color=SEVERITY_COLOR[sev], line=dict(width=2, color=BG),
                         symbol="triangle-up" if sev in ("critical", "high") else "circle"),
             customdata=[[e["text"], e["mitre"], ", ".join(map(str, e["frames"][:6]))] for e in rows],
             hovertemplate="<b>%{customdata[0]}</b><br>%{x} UTC<br>%{customdata[1]}<br>frames %{customdata[2]}<extra></extra>"))
@@ -53,8 +55,8 @@ def timeline_figure(inv: Investigation) -> go.Figure:
     return _style(fig, "Attack timeline (by kill-chain stage)", height=120 + 60 * max(len(stages), 2))
 
 
-def traffic_over_time(inv: Investigation) -> go.Figure:
-    """Bytes per time bucket, with finding start times marked."""
+def traffic_over_time(inv: Investigation, until: float | None = None) -> go.Figure:
+    """Bytes per time bucket, with finding start times marked. With `until`, the future is dimmed and later findings hidden (replay)."""
     s = inv.store
     span = s.q("SELECT MIN(ts) AS a, MAX(ts) AS b FROM packets")[0]
     if span["a"] is None:
@@ -64,13 +66,18 @@ def traffic_over_time(inv: Investigation) -> go.Figure:
     x = [r["k"] * bucket for r in rows]
     y = [r["n_bytes"] / 1000 for r in rows]
     fig = go.Figure(go.Scatter(x=x, y=y, mode="lines", line=dict(color=SERIES_BLUE, width=2), fill="tozeroy",
-                               fillcolor="rgba(42,120,214,0.12)",
+                               fillcolor="rgba(88,166,255,0.14)",
                                hovertemplate=f"t+%{{x}}s<br>%{{y:,.1f}} KB per {bucket}s<extra></extra>"))
     for f in inv.findings:
-        if f.severity in ("critical", "high"):
+        if f.severity in ("critical", "high") and (until is None or f.first_seen <= until):
             fig.add_vline(x=f.first_seen - span["a"], line=dict(color=SEVERITY_COLOR[f.severity], width=1, dash="dot"))
             fig.add_annotation(x=f.first_seen - span["a"], y=1, yref="paper", text=f.id, showarrow=False,
                                font=dict(size=11), yshift=8)
+    if until is not None and until < span["b"]:
+        now = max(until, span["a"]) - span["a"]
+        fig.add_vrect(x0=now, x1=span["b"] - span["a"] + bucket, fillcolor="rgba(13,17,23,0.8)", line_width=0, layer="above")
+        fig.add_vline(x=now, line=dict(color=SERIES_BLUE, width=2))
+        fig.add_annotation(x=now, y=1, yref="paper", text="now", showarrow=False, font=dict(size=12, color=SERIES_BLUE), yshift=22)
     fig.update_xaxes(title=f"seconds since capture start (dotted lines = high/critical findings)")
     fig.update_yaxes(title=f"KB per {bucket}s")
     fig.update_layout(hovermode="x unified")
@@ -137,7 +144,7 @@ def network_map(inv: Investigation, max_edges: int = 40, tiny_bytes: int = 1000)
         hot = a in flagged and b in flagged
         fig.add_trace(go.Scatter(x=[pos[a][0], pos[b][0]], y=[pos[a][1], pos[b][1]], mode="lines", hoverinfo="skip",
                                  showlegend=False, line=dict(width=1.5 + 6 * d.get("weight", 1) / top,
-                                                             color=SEVERITY_COLOR["critical"] if hot else "rgba(138,137,132,0.45)")))
+                                                             color=SEVERITY_COLOR["critical"] if hot else "rgba(139,148,158,0.45)")))
     biggest = {n for n, _ in sorted(((n, sum(d["weight"] for d in g[n].values())) for n in g.nodes),
                                     key=lambda kv: -kv[1])[:6]}
     groups = {"External host": [], "Internal host": [], "Scan targets / low traffic": [], "In high/critical finding": []}
@@ -162,7 +169,7 @@ def network_map(inv: Investigation, max_edges: int = 40, tiny_bytes: int = 1000)
             x=[pos[n][0] for n in nodes], y=[pos[n][1] for n in nodes], mode="markers+text", name=name,
             text=[lab if (n in flagged or n in biggest or n in cluster_names) else "" for n, lab in zip(nodes, labels)],
             textposition="bottom center", textfont=dict(size=12),
-            marker=dict(size=size, color=color, symbol=symbol, line=dict(width=2, color="white")),
+            marker=dict(size=size, color=color, symbol=symbol, line=dict(width=2, color=BG)),
             customdata=hover, hovertemplate="%{customdata}<extra></extra>"))
     xs, ys = [p[0] for p in pos.values()], [p[1] for p in pos.values()]
     pad_x, pad_y = (max(xs) - min(xs)) * 0.18 + 0.1, (max(ys) - min(ys)) * 0.1 + 0.1

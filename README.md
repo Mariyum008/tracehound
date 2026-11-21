@@ -2,7 +2,7 @@
 
 **AI-assisted breach investigation for packet captures.** Give it a `.pcap` from a suspected incident and it tells you what happened, how it happened, and proves every claim with packet evidence you can check in Wireshark.
 
-**Project page:** https://mariyum008.github.io/tracehound/
+**Project page:** https://mariyum008.github.io/tracehound/ | **Live dashboard:** https://mariyum008-tracehound-srctracehounddashboard-wzwkzv.streamlit.app
 
 ```
 $ tracehound report demo_breach.pcap
@@ -88,6 +88,8 @@ tracehound dashboard                     # opens http://localhost:8501
 
 | Tab | What you get |
 |---|---|
+| **Replay** | Press play and watch the attack unfold: the risk score climbs, the kill chain lights up and hosts get involved as each event happens |
+| **Detections** | Which of the 10 rules fired and which stayed quiet |
 | **Timeline** | Findings plotted by kill-chain stage and time, each with an *Open in Wireshark* button |
 | **Findings** | Severity, MITRE technique, evidence packets, and the exact Wireshark display filter |
 | **Traffic** | Volume over time with findings marked, top talkers, protocol mix |
@@ -95,7 +97,7 @@ tracehound dashboard                     # opens http://localhost:8501
 | **Ask Claude** | Chat about the capture. Claude calls Tracehound's tools, cites frames, and invented frames are flagged |
 | **Report** | Download the evidence report or a Claude-written incident report as Word (.docx) or Markdown |
 
-Sources: open a file saved from Wireshark, **monitor live traffic** (tshark captures in the background and the dashboard re-analyzes every 5-60 seconds, keeping your chat with Claude), run a fixed-length capture, or load the built-in demo breach. Captures are stored in `~/.tracehound/captures`.
+Dark security-ops look with a **risk score**, a **kill-chain strip** and one-click **sample attacks** (breach, intrusion, clean baseline). Sources: open a file saved from Wireshark, **monitor live traffic** (tshark captures in the background and the dashboard re-analyzes every 5-60 seconds, keeping your chat with Claude), run a fixed-length capture, or load the built-in demo breach. Captures are stored in `~/.tracehound/captures`.
 
 **Wireshark round trip:** every *Open in Wireshark* button launches Wireshark on the same file, jumps to the first evidence frame and applies a `frame.number in {...}` filter, so you and Claude are looking at the same packets.
 
@@ -173,11 +175,19 @@ Scores Tracehound against breach captures with known answers: first infected hos
 pytest -q
 ```
 
-50 tests. The suite builds a synthetic breach (dropper download, cleartext password, DGA, C2 beaconing, SMB sweep, exfiltration) hidden among normal browsing, a second intrusion (SSH brute force, DNS tunnel, SMB/RDP/WinRM lateral movement), plus a clean baseline. It checks that the new rules stay silent on the first breach and the clean baseline. It checks that every stage is detected, that clean traffic produces **zero** findings, that the timeline is in attack order, that every evidence frame exists, and that `verify_claim` and the citation checker reject invented evidence. Dashboard tests cover the Claude tool-use loop (with a scripted fake client, so no API key is needed), the Wireshark bridge and live monitoring (with fake tshark/wireshark executables, including a streaming capture and a macOS permission-denied case), the charts, Word export, and a headless render of the whole app. Zeek tests check that the Zeek pipeline finds the same attack stages as the pcap pipeline, in both TSV and JSON, and that logs in the exact header layout of Zeek's own test baselines (masked timestamps, extra columns, unset and empty fields, gzip) parse correctly.
+61 tests. The suite builds a synthetic breach (dropper download, cleartext password, DGA, C2 beaconing, SMB sweep, exfiltration) hidden among normal browsing, a second intrusion (SSH brute force, DNS tunnel, SMB/RDP/WinRM lateral movement), plus a clean baseline. It checks that the new rules stay silent on the first breach and the clean baseline. It checks that every stage is detected, that clean traffic produces **zero** findings, that the timeline is in attack order, that every evidence frame exists, and that `verify_claim` and the citation checker reject invented evidence. Dashboard tests cover the Claude tool-use loop (with a scripted fake client, so no API key is needed), the Wireshark bridge and live monitoring (with fake tshark/wireshark executables, including a streaming capture and a macOS permission-denied case), the charts, Word export, and a headless render of the whole app, the risk score, the sample-attack buttons and the Attack Replay controls. Zeek tests check that the Zeek pipeline finds the same attack stages as the pcap pipeline, in both TSV and JSON, and that logs in the exact header layout of Zeek's own test baselines (masked timestamps, extra columns, unset and empty fields, gzip) parse correctly.
 
-**Test run** - all 50 tests passing:
+**Dashboard** - dark view with risk score and kill chain, and the Attack Replay tab:
 
-![pytest output: 50 passed](docs/images/test-results.png)
+![Dashboard on the sample breach](docs/images/dashboard-breach.png)
+
+![Attack Replay](docs/images/dashboard-replay.png)
+
+![Detections tab](docs/images/dashboard-detections.png)
+
+**Test run** - all 61 tests passing:
+
+![pytest output: 61 passed](docs/images/test-results.png)
 
 **New rules on the intrusion scenario** - brute force, DNS tunnel and lateral movement detected, with the compromised server named as the first host:
 
