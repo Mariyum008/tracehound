@@ -39,7 +39,7 @@ Tracehound sits in between, with three design principles:
       |
   [ store ]       DuckDB in memory + IP-to-domain map (DNS answers, SNI, HTTP Host)
       |
-  [ detectors ]   6 rules -> Findings (severity, kill-chain stage, MITRE ATT&CK, evidence frames)
+  [ detectors ]   9 rules -> Findings (severity, kill-chain stage, MITRE ATT&CK, evidence frames)
       |
   [ timeline ]    ordered attack story + likely first compromised host
       |
@@ -60,6 +60,9 @@ Tracehound sits in between, with three design principles:
 | `beaconing` | Outbound connections at machine-regular intervals (median period, outlier tolerant) | T1071 Application Layer Protocol |
 | `port_scan` | Vertical scans (many ports, one host) and horizontal sweeps (one port, many hosts) | T1046 Network Service Discovery |
 | `data_exfiltration` | Large, lopsided uploads from an internal host to an outside server | T1041 Exfiltration Over C2 Channel |
+| `brute_force` | Rapid repeated connections from one source to a login service (SSH, RDP, SMB, FTP, databases, VNC, WinRM) | T1110 Brute Force |
+| `dns_tunneling` | Many long, unique subdomains under one domain, i.e. data hidden in DNS queries | T1071.004 Application Layer Protocol: DNS |
+| `lateral_movement` | An internal host exchanging data with several other internal hosts over SMB/RDP/WinRM/SSH/WMI | T1021 Remote Services |
 
 All thresholds live in `Thresholds` in [`detectors.py`](src/tracehound/detectors.py).
 
@@ -168,7 +171,7 @@ Scores Tracehound against breach captures with known answers: first infected hos
 pytest -q
 ```
 
-43 tests. The suite builds a synthetic breach (dropper download, cleartext password, DGA, C2 beaconing, SMB sweep, exfiltration) hidden among normal browsing, plus a clean baseline. It checks that every stage is detected, that clean traffic produces **zero** findings, that the timeline is in attack order, that every evidence frame exists, and that `verify_claim` and the citation checker reject invented evidence. Dashboard tests cover the Claude tool-use loop (with a scripted fake client, so no API key is needed), the Wireshark bridge and live monitoring (with fake tshark/wireshark executables, including a streaming capture and a macOS permission-denied case), the charts, Word export, and a headless render of the whole app. Zeek tests check that the Zeek pipeline finds the same attack stages as the pcap pipeline, in both TSV and JSON, and that logs in the exact header layout of Zeek's own test baselines (masked timestamps, extra columns, unset and empty fields, gzip) parse correctly.
+50 tests. The suite builds a synthetic breach (dropper download, cleartext password, DGA, C2 beaconing, SMB sweep, exfiltration) hidden among normal browsing, a second intrusion (SSH brute force, DNS tunnel, SMB/RDP/WinRM lateral movement), plus a clean baseline. It checks that the new rules stay silent on the first breach and the clean baseline. It checks that every stage is detected, that clean traffic produces **zero** findings, that the timeline is in attack order, that every evidence frame exists, and that `verify_claim` and the citation checker reject invented evidence. Dashboard tests cover the Claude tool-use loop (with a scripted fake client, so no API key is needed), the Wireshark bridge and live monitoring (with fake tshark/wireshark executables, including a streaming capture and a macOS permission-denied case), the charts, Word export, and a headless render of the whole app. Zeek tests check that the Zeek pipeline finds the same attack stages as the pcap pipeline, in both TSV and JSON, and that logs in the exact header layout of Zeek's own test baselines (masked timestamps, extra columns, unset and empty fields, gzip) parse correctly.
 
 ## Limitations
 

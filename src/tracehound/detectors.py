@@ -47,6 +47,17 @@ class Thresholds:
     nxdomain_min: int = 10
     exfil_min_bytes: int = 5_000_000
     exfil_min_ratio: float = 3.0
+    brute_min_attempts: int = 20       # connections to one login service from one source
+    brute_min_rate: float = 2.0        # attempts per minute
+    tunnel_min_names: int = 30         # unique subdomains under one domain
+    tunnel_min_avg_len: float = 20.0   # average subdomain length in characters
+    lateral_min_hosts: int = 3         # internal hosts reached over remote-admin protocols
+
+# Login services attackers guess passwords against
+AUTH_PORTS = {21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 110: "POP3", 143: "IMAP", 389: "LDAP", 445: "SMB",
+              1433: "MSSQL", 3306: "MySQL", 3389: "RDP", 5432: "PostgreSQL", 5900: "VNC", 5985: "WinRM", 5986: "WinRM"}
+# Remote-admin protocols used to move between machines
+ADMIN_PORTS = {22: "SSH", 135: "RPC/WMI", 445: "SMB", 3389: "RDP", 5985: "WinRM", 5986: "WinRM"}
 
 
 def _entropy(s: str) -> float:
@@ -225,8 +236,88 @@ def detect_exfiltration(s: CaptureStore, t: Thresholds) -> list[Finding]:
     return out
 
 
+def detect_brute_force(s: CaptureStore, t: Thresholds) -> list[Finding]:
+    # Many new connections from one source to one login service = password guessing
+    ports = list(AUTH_PORTS)
+    out = []
+    for r in s.q("""SELECT src, dst, dport, COUNT(*) n, MIN(ts) first_ts, MAX(ts) last_ts, LIST(frame ORDER BY frame) frames
+                    FROM packets WHERE proto='TCP' AND flags='S' AND dport IN (SELECT UNNEST(?))
+                    GROUP BY src, dst, dport HAVING n >= ?""", [ports, t.brute_min_attempts]):
+        minutes = max((r["last_ts"] - r["first_ts"]) / 60, 1 / 60)
+        rate = r["n"] / minutes
+        if rate < t.brute_min_rate:
+            continue
+        svc = AUTH_PORTS[r["dport"]]
+        out.append(Finding(
+            rule="brute_force", severity="high", stage="Credential Access", mitre="T1110 Brute Force",
+            title=f"{svc} brute force against {r['dst']} from {r['src']}",
+            description=f"{s.label(r['src'])} opened {r['n']} {svc} connections to {s.label(r['dst'])} port {r['dport']} "
+                        f"in {r['last_ts'] - r['first_ts']:.0f}s (about {rate:.0f} per minute). Rapid repeated logins like this "
+                        f"usually mean someone is guessing passwords.",
+            hosts=[r["src"], r["dst"]], first_seen=r["first_ts"], last_seen=r["last_ts"], evidence_frames=_spread(r["frames"])))
+    return out
+
+
+def detect_dns_tunneling(s: CaptureStore, t: Thresholds) -> list[Finding]:
+    # Lots of long, unique subdomains under one domain = data smuggled inside DNS queries
+    groups: dict[tuple, list] = defaultdict(list)
+    for r in s.q("SELECT frame, ts, src, qname FROM dns WHERE NOT is_response ORDER BY frame"):
+        q = r["qname"]
+        parts = q.split(".")
+        if len(parts) < 3 or q.endswith(BENIGN_SUFFIXES):
+            continue
+        groups[(r["src"], ".".join(parts[-2:]))].append((r, ".".join(parts[:-2])))
+    out = []
+    for (src, base), rows in groups.items():
+        subs = {sub for _, sub in rows}
+        avg_len = statistics.mean(len(x) for x in subs)
+        if len(subs) < t.tunnel_min_names or avg_len < t.tunnel_min_avg_len:
+            continue
+        approx_bytes = sum(len(x) for x in subs) * 0.6  # rough payload after encoding overhead
+        out.append(Finding(
+            rule="dns_tunneling", severity="high", stage="Command and Control / Exfiltration",
+            mitre="T1071.004 Application Layer Protocol: DNS",
+            title=f"Possible DNS tunnel from {src} via {base}",
+            description=f"{src} sent {len(rows)} queries for {len(subs)} unique subdomains of {base} (average {avg_len:.0f} "
+                        f"characters, roughly {approx_bytes / 1000:.1f} KB of encoded data). Long, never-repeating names like "
+                        f"these are how tools hide commands or stolen data inside DNS.",
+            hosts=[src], first_seen=rows[0][0]["ts"], last_seen=rows[-1][0]["ts"],
+            evidence_frames=_spread([r["frame"] for r, _ in rows])))
+    return out
+
+
+def detect_lateral_movement(s: CaptureStore, t: Thresholds) -> list[Finding]:
+    # An internal host actually exchanging data with several other internal hosts over SMB/RDP/WinRM/SSH
+    ports = list(ADMIN_PORTS)
+    groups: dict[str, list] = defaultdict(list)
+    for r in s.q("""SELECT frame, ts, src, dst, dport FROM packets
+                    WHERE payload_len > 0 AND dport IN (SELECT UNNEST(?)) AND is_internal(src) AND is_internal(dst)
+                    AND src <> dst ORDER BY ts""", [ports]):
+        groups[r["src"]].append(r)
+    out = []
+    for src, rows in groups.items():
+        targets = sorted({r["dst"] for r in rows})
+        if len(targets) < t.lateral_min_hosts:
+            continue
+        protos = sorted({ADMIN_PORTS[r["dport"]] for r in rows})
+        # One evidence frame per target so every hop is provable
+        first_per_target = {}
+        for r in rows:
+            first_per_target.setdefault(r["dst"], r["frame"])
+        out.append(Finding(
+            rule="lateral_movement", severity="critical", stage="Lateral Movement", mitre="T1021 Remote Services",
+            title=f"{src} used {'/'.join(protos)} on {len(targets)} internal hosts",
+            description=f"{src} opened working {'/'.join(protos)} sessions to {len(targets)} other internal machines "
+                        f"({', '.join(targets[:5])}{'...' if len(targets) > 5 else ''}). Hopping between machines with "
+                        f"remote-admin tools is how attackers spread after the first compromise.",
+            hosts=[src, *targets], first_seen=rows[0]["ts"], last_seen=rows[-1]["ts"],
+            evidence_frames=_spread(sorted(first_per_target.values()), 8)))
+    return out
+
+
 DETECTORS = [detect_suspicious_downloads, detect_cleartext_credentials, detect_suspicious_domains,
-             detect_beaconing, detect_port_scans, detect_exfiltration]
+             detect_beaconing, detect_port_scans, detect_exfiltration, detect_brute_force, detect_dns_tunneling,
+             detect_lateral_movement]
 
 
 def run_all(s: CaptureStore, t: Thresholds | None = None) -> list[Finding]:
