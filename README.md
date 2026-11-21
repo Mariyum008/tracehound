@@ -2,6 +2,8 @@
 
 **AI-assisted breach investigation for packet captures.** Give it a `.pcap` from a suspected incident and it tells you what happened, how it happened, and proves every claim with packet evidence you can check in Wireshark.
 
+**Project page:** https://mariyum008.github.io/tracehound/
+
 ```
 $ tracehound report demo_breach.pcap
 
@@ -172,6 +174,14 @@ pytest -q
 ```
 
 50 tests. The suite builds a synthetic breach (dropper download, cleartext password, DGA, C2 beaconing, SMB sweep, exfiltration) hidden among normal browsing, a second intrusion (SSH brute force, DNS tunnel, SMB/RDP/WinRM lateral movement), plus a clean baseline. It checks that the new rules stay silent on the first breach and the clean baseline. It checks that every stage is detected, that clean traffic produces **zero** findings, that the timeline is in attack order, that every evidence frame exists, and that `verify_claim` and the citation checker reject invented evidence. Dashboard tests cover the Claude tool-use loop (with a scripted fake client, so no API key is needed), the Wireshark bridge and live monitoring (with fake tshark/wireshark executables, including a streaming capture and a macOS permission-denied case), the charts, Word export, and a headless render of the whole app. Zeek tests check that the Zeek pipeline finds the same attack stages as the pcap pipeline, in both TSV and JSON, and that logs in the exact header layout of Zeek's own test baselines (masked timestamps, extra columns, unset and empty fields, gzip) parse correctly.
+
+**Test run** - all 50 tests passing:
+
+![pytest output: 50 passed](docs/images/test-results.png)
+
+**New rules on the intrusion scenario** - brute force, DNS tunnel and lateral movement detected, with the compromised server named as the first host:
+
+![Tracehound report on the intrusion scenario](docs/images/new-rules-detection.png)
 
 ## Limitations
 
