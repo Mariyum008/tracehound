@@ -3,30 +3,204 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tracehound - AI-assisted breach investigation</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown-dark.min.css">
+<title>Tracehound - AI-assisted breach investigation for packet captures</title>
+<meta name="description" content="Give Tracehound a .pcap and it finds the attack, builds the timeline, and proves every claim with packet evidence you can check in Wireshark.">
 <style>
-  body { background: #0d1117; margin: 0; }
-  .markdown-body { box-sizing: border-box; max-width: 980px; margin: 0 auto; padding: 40px 24px; }
-  .bar { max-width: 980px; margin: 0 auto; padding: 16px 24px 0; }
-  .bar a { color: #58a6ff; font: 14px -apple-system, sans-serif; text-decoration: none; }
+  :root { --bg:#0d1117; --panel:#161b22; --line:#262c36; --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff;
+          --crit:#ff6b6b; --high:#ffb86c; --med:#f1fa8c; --ok:#50fa7b; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .wrap { max-width:1040px; margin:0 auto; padding:0 24px; }
+  nav { border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(13,17,23,.92); backdrop-filter:blur(8px); z-index:5; }
+  nav .wrap { display:flex; align-items:center; justify-content:space-between; height:56px; }
+  nav .brand { font-weight:700; color:var(--text); letter-spacing:.2px; }
+  nav .links a { margin-left:22px; color:var(--muted); font-size:14px; }
+  nav .links a:hover { color:var(--text); text-decoration:none; }
+  .hero { padding:72px 0 40px; text-align:center; }
+  .hero h1 { font-size:56px; line-height:1.1; margin:0 0 16px; letter-spacing:-1px; }
+  .hero p.lead { font-size:20px; color:var(--muted); max-width:720px; margin:0 auto 28px; }
+  .btn { display:inline-block; padding:10px 20px; border-radius:8px; font-weight:600; font-size:15px; margin:0 6px; border:1px solid var(--line); color:var(--text); }
+  .btn.primary { background:var(--accent); color:#0d1117; border-color:var(--accent); }
+  .btn:hover { text-decoration:none; filter:brightness(1.1); }
+  .term { background:#0a0d12; border:1px solid var(--line); border-radius:12px; overflow:hidden; max-width:880px; margin:36px auto 0; text-align:left; box-shadow:0 20px 60px rgba(0,0,0,.4); }
+  .term .bar { background:#1b2029; padding:10px 14px; display:flex; gap:7px; align-items:center; }
+  .term .bar i { width:12px; height:12px; border-radius:50%; display:block; }
+  .term pre { margin:0; padding:18px 20px; font:12.5px/1.75 var(--mono); overflow-x:auto; }
+  .crit { color:var(--crit); font-weight:700; } .high { color:var(--high); font-weight:700; } .med { color:var(--med); font-weight:700; }
+  .dim { color:var(--muted); } .cmd { color:#bd93f9; font-weight:700; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:56px 0; }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:20px; text-align:center; }
+  .stat b { display:block; font-size:34px; line-height:1.2; }
+  .stat span { color:var(--muted); font-size:14px; }
+  section { padding:36px 0; }
+  h2 { font-size:30px; margin:0 0 8px; letter-spacing:-.4px; }
+  .sub { color:var(--muted); margin:0 0 24px; max-width:720px; }
+  .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:22px; }
+  .card h3 { margin:0 0 8px; font-size:18px; }
+  .card p { margin:0; color:var(--muted); font-size:15px; }
+  .card .n { color:var(--accent); font:700 13px var(--mono); margin-bottom:8px; display:block; }
+  .flow { display:flex; align-items:stretch; gap:10px; flex-wrap:wrap; }
+  .step { flex:1 1 150px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; font-size:14px; }
+  .step b { display:block; font-size:15px; margin-bottom:4px; color:var(--accent); }
+  .step span { color:var(--muted); }
+  .out { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:14px; }
+  .out div { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; font-size:14px; color:var(--muted); }
+  .out code { color:var(--text); }
+  table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; font-size:15px; }
+  th, td { text-align:left; padding:12px 16px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.6px; background:#12171e; }
+  tr:last-child td { border-bottom:0; }
+  td code, .mitre { font-family:var(--mono); font-size:13px; }
+  .mitre { color:#8be9fd; white-space:nowrap; }
+  .new { display:inline-block; font:700 10px var(--mono); background:#1f6f43; color:#d2ffe3; border-radius:4px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+  .shots { display:grid; gap:22px; }
+  .shot { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .shot img { width:100%; height:auto; display:block; border-radius:8px; }
+  .shot p { margin:12px 4px 0; color:var(--muted); font-size:14px; }
+  .code { background:#0a0d12; border:1px solid var(--line); border-radius:12px; padding:18px 20px; font:13.5px/1.8 var(--mono); overflow-x:auto; white-space:pre; margin:0 0 14px; }
+  ul.tight { margin:0; padding-left:20px; color:var(--muted); }
+  ul.tight li { margin:6px 0; }
+  ul.tight b { color:var(--text); }
+  footer { border-top:1px solid var(--line); margin-top:40px; padding:28px 0 48px; color:var(--muted); font-size:14px; text-align:center; }
+  @media (max-width:760px) {
+    .hero h1 { font-size:40px; } .stats { grid-template-columns:repeat(2,1fr); } .cards, .out { grid-template-columns:1fr; }
+    nav .links a:nth-child(-n+2) { display:none; } table { font-size:14px; } th, td { padding:10px; }
+  }
 </style>
 </head>
 <body>
-<div class="bar"><a href="https://github.com/Mariyum008/tracehound">View on GitHub &rarr;</a></div>
-<article id="readme" class="markdown-body">Loading...</article>
-<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
-<script>
-  // Render README.md so the page always matches the repo
-  fetch("README.md").then(r => r.text()).then(md => {
-    const el = document.getElementById("readme");
-    el.innerHTML = marked.parse(md);
-    // Point repo file links (src/, EVALUATION.md, ...) at GitHub; keep images and anchors local
-    el.querySelectorAll("a[href]").forEach(a => {
-      const h = a.getAttribute("href");
-      if (!/^(https?:|#|mailto:)/.test(h)) a.href = "https://github.com/Mariyum008/tracehound/blob/main/" + h;
-    });
-  }).catch(() => { document.getElementById("readme").textContent = "Could not load README."; });
-</script>
+
+<nav><div class="wrap">
+  <a class="brand" href="#top">Tracehound</a>
+  <div class="links"><a href="#rules">Detections</a><a href="#proof">Proof</a><a href="#start">Get started</a>
+    <a href="https://github.com/Mariyum008/tracehound">GitHub</a></div>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap">
+  <h1>Find the breach in the packets.</h1>
+  <p class="lead">Give Tracehound a <code>.pcap</code> from a suspected incident. It finds the attack, builds the timeline, and proves every claim with packet evidence you can check in Wireshark.</p>
+  <a class="btn primary" href="#start">Get started</a>
+  <a class="btn" href="https://github.com/Mariyum008/tracehound">View on GitHub</a>
+
+  <div class="term">
+    <div class="bar"><i style="background:#ff5f56"></i><i style="background:#ffbd2e"></i><i style="background:#27c93f"></i></div>
+<pre><span class="cmd">$ tracehound report demo_breach.pcap</span>
+
+Likely first compromised host: 192.168.1.20
+
+08:56:40  <span class="crit">CRITICAL</span>  <span class="dim">[Initial Access]</span>       Suspicious download by 192.168.1.20      <span class="dim">[frame 262]</span>
+08:57:40  <span class="high">HIGH</span>      <span class="dim">[Credential Access]</span>    Credentials sent unencrypted over HTTP   <span class="dim">[frame 416]</span>
+08:58:20  <span class="high">HIGH</span>      <span class="dim">[Command and Control]</span>  12 random-looking domains (DGA)          <span class="dim">[frames 417, 421, ...]</span>
+08:58:41  <span class="high">HIGH</span>      <span class="dim">[Command and Control]</span>  Regular beaconing every 60s to the C2    <span class="dim">[frames 443, 453, ...]</span>
+09:09:10  <span class="high">HIGH</span>      <span class="dim">[Lateral Movement]</span>     Network sweep on port 445 (SMB)          <span class="dim">[frames 493, 498, ...]</span>
+09:10:00  <span class="crit">CRITICAL</span>  <span class="dim">[Exfiltration]</span>         6.3 MB uploaded to the C2 server         <span class="dim">[frames 747, 1573, ...]</span></pre>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <div class="stats">
+    <div class="stat"><b>10</b><span>detection rules</span></div>
+    <div class="stat"><b>50</b><span>tests passing</span></div>
+    <div class="stat"><b>MITRE</b><span>ATT&amp;CK mapped</span></div>
+    <div class="stat"><b>2</b><span>input formats: pcap, Zeek</span></div>
+  </div>
+
+  <section>
+    <h2>Why it exists</h2>
+    <p class="sub">Wireshark shows you everything but tells you nothing. Existing AI integrations let a model query raw packets, but leave the investigation and the trust problem to the model. Commercial analysts are closed and enterprise-priced. Tracehound sits in between.</p>
+    <div class="cards">
+      <div class="card"><span class="n">01</span><h3>Detect first, explain second</h3><p>Deterministic rules find the suspicious activity. The AI only explains what the rules found. It never guesses from raw packets.</p></div>
+      <div class="card"><span class="n">02</span><h3>Every claim cites evidence</h3><p>Findings carry frame numbers. A verification tool and a citation checker reject anything the evidence does not support.</p></div>
+      <div class="card"><span class="n">03</span><h3>Index once, query fast</h3><p>The capture is parsed once into DuckDB, so every follow-up question is a SQL query instead of a re-parse.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <p class="sub">One pipeline from raw packets to an attack story.</p>
+    <div class="flow">
+      <div class="step"><b>Parser</b><span>scapy streams packets into DNS, HTTP, TLS and cleartext-auth tables</span></div>
+      <div class="step"><b>Store</b><span>DuckDB in memory, plus an IP-to-domain map</span></div>
+      <div class="step"><b>Detectors</b><span>9 detectors produce findings with severity, MITRE technique and evidence frames</span></div>
+      <div class="step"><b>Timeline</b><span>Ordered attack story and the likely first compromised host</span></div>
+    </div>
+    <div class="out">
+      <div><code>tracehound dashboard</code> - Streamlit app: charts, network map, chat with Claude, open frames in Wireshark</div>
+      <div><code>tracehound report</code> - Markdown or JSON report, no AI needed</div>
+      <div><code>tracehound explain</code> - Claude writes the narrative, citations are checked</div>
+      <div><code>tracehound-mcp</code> - MCP server so Claude Desktop can investigate interactively</div>
+    </div>
+  </section>
+
+  <section id="rules">
+    <h2>What it detects</h2>
+    <p class="sub">Ten rules across the kill chain, each mapped to a MITRE ATT&amp;CK technique and each pointing at the exact frames that prove it.</p>
+    <table>
+      <tr><th>Rule</th><th>What it catches</th><th>MITRE ATT&amp;CK</th></tr>
+      <tr><td><code>suspicious_download</code></td><td>Executables and scripts over HTTP, scripted user-agents, requests to raw IPs</td><td class="mitre">T1105</td></tr>
+      <tr><td><code>cleartext_credentials</code></td><td>Passwords in HTTP forms, Basic auth, FTP / POP3 / IMAP / SMTP / Telnet logins</td><td class="mitre">T1552</td></tr>
+      <tr><td><code>suspicious_domains</code></td><td>High-entropy, random-looking domain names (with a CDN allowlist)</td><td class="mitre">T1568.002</td></tr>
+      <tr><td><code>nxdomain_burst</code></td><td>Many failed DNS lookups from one host</td><td class="mitre">T1568.002</td></tr>
+      <tr><td><code>beaconing</code></td><td>Outbound connections at machine-regular intervals</td><td class="mitre">T1071</td></tr>
+      <tr><td><code>port_scan</code></td><td>Vertical scans and horizontal sweeps</td><td class="mitre">T1046</td></tr>
+      <tr><td><code>data_exfiltration</code></td><td>Large, lopsided uploads from an internal host to an outside server</td><td class="mitre">T1041</td></tr>
+      <tr><td><code>brute_force</code><span class="new">NEW</span></td><td>Rapid repeated logins to SSH, RDP, SMB, FTP, databases, VNC or WinRM</td><td class="mitre">T1110</td></tr>
+      <tr><td><code>dns_tunneling</code><span class="new">NEW</span></td><td>Long, unique subdomains under one domain: data hidden in DNS queries</td><td class="mitre">T1071.004</td></tr>
+      <tr><td><code>lateral_movement</code><span class="new">NEW</span></td><td>An internal host exchanging data with several others over SMB, RDP, WinRM, SSH or WMI</td><td class="mitre">T1021</td></tr>
+    </table>
+  </section>
+
+  <section id="proof">
+    <h2>Tested</h2>
+    <p class="sub">Every rule is tested against synthetic breaches hidden in normal browsing, and against clean traffic that must produce zero findings.</p>
+    <div class="shots">
+      <div class="shot"><img src="docs/images/new-rules-detection.png" alt="Tracehound report on the intrusion scenario"><p>The intrusion scenario: SSH brute force, DNS tunnel and lateral movement detected, with the compromised server named as the first host.</p></div>
+      <div class="shot"><img src="docs/images/test-results.png" alt="pytest output: 50 passed"><p>The full test suite: 50 passed.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Dashboard</h2>
+    <p class="sub">A Streamlit app that runs on your machine. It works on a saved capture or monitors live traffic.</p>
+    <ul class="tight">
+      <li><b>Timeline</b> - findings by kill-chain stage and time, each with an Open in Wireshark button</li>
+      <li><b>Findings</b> - severity, MITRE technique, evidence packets and the exact Wireshark display filter</li>
+      <li><b>Network map</b> - who talked to whom, compromised paths in red</li>
+      <li><b>Ask Claude</b> - chat about the capture; Claude cites frames and invented ones are flagged</li>
+      <li><b>Report</b> - download an evidence report or a Claude-written incident report as Word or Markdown</li>
+    </ul>
+  </section>
+
+  <section id="start">
+    <h2>Get started</h2>
+    <p class="sub">Python 3.10 or newer.</p>
+    <div class="code">git clone https://github.com/Mariyum008/tracehound.git
+cd tracehound
+python -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -e ".[dev]"</div>
+    <div class="code">tracehound dashboard          # opens http://localhost:8501
+tracehound report my.pcap      # Markdown report, no API key needed</div>
+  </section>
+
+  <section>
+    <h2>Honest limits</h2>
+    <ul class="tight">
+      <li><b>Validated on synthetic scenarios so far.</b> Scores on real-world breach captures are the next milestone, and an evaluation harness is built in.</li>
+      <li><b>Encrypted traffic:</b> for HTTPS it sees who talked to whom, when and how much, not the content.</li>
+      <li><b>Network view only:</b> it cannot see processes, files or registry changes on hosts.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer><div class="wrap">
+  MIT licensed &middot; <a href="https://github.com/Mariyum008/tracehound">github.com/Mariyum008/tracehound</a>
+</div></footer>
+
 </body>
 </html>

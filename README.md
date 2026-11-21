@@ -41,7 +41,7 @@ Tracehound sits in between, with three design principles:
       |
   [ store ]       DuckDB in memory + IP-to-domain map (DNS answers, SNI, HTTP Host)
       |
-  [ detectors ]   9 rules -> Findings (severity, kill-chain stage, MITRE ATT&CK, evidence frames)
+  [ detectors ]   9 detectors (10 rules) -> Findings (severity, kill-chain stage, MITRE ATT&CK, evidence frames)
       |
   [ timeline ]    ordered attack story + likely first compromised host
       |
@@ -71,7 +71,7 @@ All thresholds live in `Thresholds` in [`detectors.py`](src/tracehound/detectors
 ## Install
 
 ```bash
-git clone https://github.com/AiMk937/tracehound.git
+git clone https://github.com/Mariyum008/tracehound.git
 cd tracehound
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
