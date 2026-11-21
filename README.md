@@ -4,6 +4,9 @@
 
 **Project page:** https://mariyum008.github.io/tracehound/ | **Live dashboard:** https://mariyum008-tracehound-srctracehounddashboard-wzwkzv.streamlit.app
 
+[![Tracehound dashboard on the sample breach](docs/images/dashboard-breach.png)](https://mariyum008-tracehound-srctracehounddashboard-wzwkzv.streamlit.app)
+*Dashboard on the sample breach (click to open the live app, which may take a few seconds to wake up).*
+
 ```
 $ tracehound report demo_breach.pcap
 
@@ -229,7 +232,7 @@ pytest -q
 - [ ] Publish scores on 10+ real breach exercises from Malware-Traffic-Analysis.net
 - [x] Streamlit dashboard with Claude chat, charts, network map and Wireshark integration
 - [x] Live monitoring with auto-refresh
-- [ ] More protocols: SMB, Kerberos, TLS certificates, JA3/JA4 fingerprints
+- [ ] Deeper protocol parsing: SMB commands, Kerberos, TLS certificates, JA3/JA4 fingerprints
 - [x] Zeek log ingestion (conn, dns, http, ssl, ftp; TSV or JSON; gzip)
 - [ ] Local model support (Ollama) for captures that must not leave the machine
 
