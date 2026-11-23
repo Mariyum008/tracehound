@@ -9,9 +9,9 @@ import plotly.graph_objects as go
 from .investigation import Investigation, STAGE_ORDER
 from .store import is_internal
 
-SERIES_BLUE = "#58a6ff"
-MUTED = "#8b949e"
-BG = "#0d1117"  # page background, used for marker outlines
+SERIES_BLUE = "#88cc14"
+MUTED = "#8c97ad"
+BG = "#0f1523"  # page background, used for marker outlines
 # Severity is a status, so it uses the reserved status palette and always ships with a text label
 SEVERITY_COLOR = {"critical": "#ff6b6b", "high": "#ffa657", "medium": "#e3b341", "low": MUTED}
 SEVERITY_ICON = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}

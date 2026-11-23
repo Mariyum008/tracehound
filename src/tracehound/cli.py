@@ -76,8 +76,8 @@ def main(argv: list[str] | None = None) -> int:
         app = Path(__file__).with_name("dashboard.py")
         cmd = [sys.executable, "-m", "streamlit", "run", str(app), "--server.port", str(args.port),
                "--browser.gatherUsageStats", "false", "--server.fileWatcherType", "none",  # no watchdog nag
-               "--theme.base", "dark", "--theme.primaryColor", "#58a6ff", "--theme.backgroundColor", "#0d1117",
-               "--theme.secondaryBackgroundColor", "#161b22", "--theme.textColor", "#e6edf3"]
+               "--theme.base", "dark", "--theme.primaryColor", "#88cc14", "--theme.backgroundColor", "#0f1523",
+               "--theme.secondaryBackgroundColor", "#1a2236", "--theme.textColor", "#e8edf5"]
         print("Starting Tracehound dashboard... press Ctrl+C here to stop it.")
         try:
             return subprocess.call(cmd)

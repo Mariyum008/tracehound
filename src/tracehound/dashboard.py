@@ -177,10 +177,12 @@ with st.sidebar:
             if mon and mon.error():
                 st.error("Capture stopped with an error:\n\n" + mon.error())
         st.caption("Only capture networks you own or are allowed to monitor.")
-    else:
+    elif st.session_state.pcap:
         for name, spec in SAMPLES.items():
             if st.button(spec["short"], key=f"side_{name}", width="stretch", help=spec["blurb"]):
                 load_sample(name)
+    else:
+        st.caption("Pick a sample attack from the cards on the right.")
 
     st.markdown('<div class="th-label">2 &middot; Claude (optional)</div>', unsafe_allow_html=True)
     key = st.text_input("Anthropic API key", type="password", value=os.environ.get("ANTHROPIC_API_KEY", ""),
@@ -231,7 +233,7 @@ if not st.session_state.pcap:
                 unsafe_allow_html=True)
     cols = st.columns(len(SAMPLES), gap="medium")
     for col, (name, spec) in zip(cols, SAMPLES.items()):
-        with col:
+        with col, st.container(border=True):
             st.markdown(ui.sample_card_html(spec["title"], spec["blurb"], spec["tags"]), unsafe_allow_html=True)
             if st.button(f"Analyze {spec['short'].lower()}", key=f"main_{name}", type="primary" if name == "breach" else "secondary",
                          width="stretch"):
