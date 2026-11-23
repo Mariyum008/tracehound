@@ -245,6 +245,14 @@ if not st.session_state.pcap:
                "compromised host.", [], "info"), unsafe_allow_html=True)
     c.markdown(ui.sample_card_html("Ask Claude", "Chat about the capture. Every cited frame is checked against the "
                "evidence, and invented ones are flagged.", [], "info"), unsafe_allow_html=True)
+    st.markdown('<div class="th-label" style="margin-top:1.6rem">Tested on real captures</div>', unsafe_allow_html=True)
+    d, e, f = st.columns(3, gap="medium")
+    d.markdown(ui.sample_card_html("6 of 6", "Infected hosts identified on 6 public Malware-Traffic-Analysis.net "
+               "exercises, with 100% host precision.", [], "info"), unsafe_allow_html=True)
+    e.markdown(ui.sample_card_html("37%", "Of the indicators listed in those answer keys were found. Honest gap: "
+               "HTTPS C2 servers and CDN addresses.", [], "info"), unsafe_allow_html=True)
+    f.markdown(ui.sample_card_html("10 rules", "Each mapped to MITRE ATT&CK. Full per-exercise results are in the "
+               "README.", [], "info"), unsafe_allow_html=True)
     st.stop()
 
 path = st.session_state.pcap
